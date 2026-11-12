@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cosmic Courier</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #050816;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+h1 {
+  margin: 16px 0 5px;
+  color: #65f4ff;
+  letter-spacing: 3px;
+}
+
+p {
+  color: #a5b4d4;
+}
+
+#game {
+  display: block;
+  width: min(94vw, 420px);
+  height: auto;
+  margin: 15px auto;
+  border: 2px solid #30dfff;
+  border-radius: 16px;
+  background: #080d25;
+  touch-action: none;
+}
+
+button {
+  background: #22d3ee;
+  color: #06101d;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 30px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#info {
+  font-size: 18px;
+  margin: 10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>🚀 COSMIC COURIER</h1>
+<p>Космическая аркада</p>
+
+<div id="info">
+  💎 <span id="score">0</span>
+  &nbsp; ❤️ <span id="lives">3</span>
+  &nbsp; 🏆 <span id="record">0</span>
+</div>
+
+<canvas id="game" width="400" height="550"></canvas>
+
+<button id="start">НАЧАТЬ ИГРУ</button>
+
+<p>Управление: ← → или мышкой / пальцем</p>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const scoreEl = document.getElementById("score");
+const livesEl = document.getElementById("lives");
+const recordEl = document.getElementById("record");
+const startBtn = document.getElementById("start");
+
+let score = 0;
+let lives = 3;
+let record = Number(localStorage.getItem("cosmicRecord")) || 0;
+
+let playing = false;
+let objects = [];
+let keys = {};
+let frame = 0;
+let animationId = null;
+
+const ship = {
+  x: 200,
+  y: 480,
+  size: 25,
+  speed: 6
+};
+
+recordEl.textContent = record;
+
+const stars = Array.from({length: 75}, () => ({
+  x: Math.random() * 400,
+  y: Math.random() * 550,
+  r: Math.random() * 1.5 + 0.3
+}));
+
+function drawBackground() {
+  ctx.fillStyle = "#080d25";
+  ctx.fillRect(0, 0, 400, 550);
+
+  ctx.fillStyle = "#ffffff";
+
+  stars.forEach(star => {
+    star.y += playing ? 0.6 : 0;
+
+    if (star.y > 550) star.y = 0;
+
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawShip() {
+  ctx.save();
+  ctx.translate(ship.x, ship.y);
+
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = "#00eaff";
+
+  ctx.fillStyle = "#4deaff";
+  ctx.beginPath();
+  ctx.moveTo(0, -30);
+  ctx.lineTo(-24, 22);
+  ctx.lineTo(0, 12);
+  ctx.lineTo(24, 22);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(0, -5, 7, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (playing) {
+    ctx.fillStyle = "#ff9d00";
+    ctx.beginPath();
+    ctx.moveTo(-8, 20);
+    ctx.lineTo(0, 20 + Math.random() * 25);
+    ctx.lineTo(8, 20);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function spawnObject() {
+  objects.push({
+    x: 25 + Math.random() * 350,
+    y: -30,
+    size: 15 + Math.random() * 10,
+    type: Math.random() < 0.65 ? "asteroid" : "crystal",
+    speed: 2.5 + score * 0.04
+  });
+}
+
+function drawObjects() {
+  for (let i = objects.length - 1; i >= 0; i--) {
+    const obj = objects[i];
+
+    obj.y += obj.speed;
+
+    if (obj.type === "asteroid") {
+      ctx.fillStyle = "#8c7892";
+      ctx.shadowColor = "#ff5577";
+      ctx.shadowBlur = 8;
+
+      ctx.beginPath();
+      ctx.arc(obj.x, obj.y, obj.size, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else {
+      ctx.fillStyle = "#39ffdd";
+      ctx.shadowColor = "#00ffcc";
+      ctx.shadowBlur = 20;
+
+      ctx.beginPath();
+      ctx.moveTo(obj.x, obj.y - obj.size);
+      ctx.lineTo(obj.x + obj.size * 0.7, obj.y);
+      ctx.lineTo(obj.x, obj.y + obj.size);
+      ctx.lineTo(obj.x - obj.size * 0.7, obj.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.shadowBlur = 0;
+
+    const distance = Math.hypot(
+      ship.x - obj.x,
+      ship.y - obj.y
+    );
+
+    if (distance < obj.size + 18) {
+      if (obj.type === "crystal") {
+        score += 10;
+        scoreEl.textContent = score;
+      } else {
+        lives--;
+        livesEl.textContent = lives;
+      }
+
+      objects.splice(i, 1);
+
+      if (lives <= 0) {
+        gameOver();
+        return;
+      }
+
+    } else if (obj.y > 580) {
+      objects.splice(i, 1);
+    }
+  }
+}
+
+function update() {
+  if (!playing) return;
+
+  animationId = requestAnimationFrame(update);
+
+  frame++;
+
+  if (keys["ArrowLeft"] || keys["a"]) {
+    ship.x -= ship.speed;
+  }
+
+  if (keys["ArrowRight"] || keys["d"]) {
+    ship.x += ship.speed;
+  }
+
+  ship.x = Math.max(28, Math.min(372, ship.x));
+
+  if (frame % Math.max(18, 45 - Math.floor(score / 50)) === 0) {
+    spawnObject();
+  }
+
+  drawBackground();
+  drawShip();
+  drawObjects();
+}
+
+function gameOver() {
+  playing = false;
+
+  cancelAnimationFrame(animationId);
+
+  if (score > record) {
+    record = score;
+    localStorage.setItem("cosmicRecord", record);
+    recordEl.textContent = record;
+  }
+
+  startBtn.textContent = "ИГРАТЬ СНОВА";
+
+  ctx.fillStyle = "rgba(0,0,0,0.75)";
+  ctx.fillRect(0, 0, 400, 550);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.font = "bold 35px Arial";
+  ctx.fillText("GAME OVER", 200, 240);
+
+  ctx.font = "22px Arial";
+  ctx.fillText("Очки: " + score, 200, 285);
+}
+
+function startGame() {
+  if (animationId !== null) {
+    cancelAnimationFrame(animationId);
+  }
+
+  score = 0;
+  lives = 3;
+  frame = 0;
+  objects = [];
+
+  ship.x = 200;
+  playing = true;
+
+  scoreEl.textContent = score;
+  livesEl.textContent = lives;
+
+  startBtn.textContent = "ЗАНОВО";
+
+  update();
+}
+
+document.addEventListener("keydown", e => {
+  if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
+    e.preventDefault();
+  }
+  keys[e.key] = true;
+});
+
+document.addEventListener("keyup", e => {
+  keys[e.key] = false;
+});
+
+function movePointer(e) {
+  if (!playing) return;
+
+  const rect = canvas.getBoundingClientRect();
+
+  ship.x = (e.clientX - rect.left) *
+    (canvas.width / rect.width);
+
+  ship.x = Math.max(28, Math.min(372, ship.x));
+}
+
+canvas.addEventListener("pointerdown", movePointer);
+canvas.addEventListener("pointermove", e => {
+  if (e.pointerType === "mouse" || e.buttons > 0) {
+    movePointer(e);
+  }
+});
+
+startBtn.addEventListener("click", startGame);
+
+drawBackground();
+drawShip();
+
+</script>
+
+</body>
+</html>
