@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -54,14 +54,13 @@ button {
   font-size: 18px;
   margin: 10px;
 }
-
 </style>
 </head>
 
 <body>
 
 <h1>🚀 COSMIC COURIER</h1>
-<p>Космическая аркада</p>
+<p>Space Arcade</p>
 
 <div id="info">
   💎 <span id="score">0</span>
@@ -71,9 +70,9 @@ button {
 
 <canvas id="game" width="400" height="550"></canvas>
 
-<button id="start">НАЧАТЬ ИГРУ</button>
+<button id="start">START GAME</button>
 
-<p>Управление: ← → или мышкой / пальцем</p>
+<p>Controls: ← → or mouse / touch</p>
 
 <script>
 
@@ -203,6 +202,7 @@ function drawObjects() {
 
     ctx.shadowBlur = 0;
 
+
     const distance = Math.hypot(
       ship.x - obj.x,
       ship.y - obj.y
@@ -267,7 +267,7 @@ function gameOver() {
     recordEl.textContent = record;
   }
 
-  startBtn.textContent = "ИГРАТЬ СНОВА";
+  startBtn.textContent = "PLAY AGAIN";
 
   ctx.fillStyle = "rgba(0,0,0,0.75)";
   ctx.fillRect(0, 0, 400, 550);
@@ -278,7 +278,7 @@ function gameOver() {
   ctx.fillText("GAME OVER", 200, 240);
 
   ctx.font = "22px Arial";
-  ctx.fillText("Очки: " + score, 200, 285);
+  ctx.fillText("Score: " + score, 200, 285);
 }
 
 function startGame() {
@@ -297,7 +297,7 @@ function startGame() {
   scoreEl.textContent = score;
   livesEl.textContent = lives;
 
-  startBtn.textContent = "ЗАНОВО";
+  startBtn.textContent = "RESTART";
 
   update();
 }
@@ -325,6 +325,7 @@ function movePointer(e) {
 }
 
 canvas.addEventListener("pointerdown", movePointer);
+
 canvas.addEventListener("pointermove", e => {
   if (e.pointerType === "mouse" || e.buttons > 0) {
     movePointer(e);
